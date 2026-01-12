@@ -69,12 +69,12 @@ const Header = () => {
   return (
     <header className="bg-surface-dark text-text-dark shadow-md">
       {/* Top Bar */}
-      <div className="bg-surface-light flex justify-between items-center px-6 py-2 text-sm">
-        <span className="font-medium text-text-light">Premium Bags Nepal</span>
+      <div className="bg-background-light flex justify-between items-center px-6 py-2 text-sm">
+        <span className="font-regilar text-text-light">Welcome to Bagbelle</span>
         <div className="flex space-x-2">
-          <a href="#" className="hover:text-accent transition"><Facebook size={18} /></a>
-          <a href="#" className="hover:text-accent transition"><Instagram size={18} /></a>
-          <a href="#" className="hover:text-accent transition"><Youtube size={18} /></a>
+          <a href="#" className="text-surface-dark hover:text-primary transition"><Facebook size={18} /></a>
+          <a href="#" className="text-surface-dark hover:text-primary transition"><Instagram size={18} /></a>
+          <a href="#" className="text-surface-dark hover:text-primary transition"><Youtube size={18} /></a>
         </div>
       </div>
 
@@ -115,15 +115,15 @@ const Header = () => {
             </button>
             {user && isProfileOpen && (
               <div className="absolute right-0 mt-2 w-44 bg-surface-light rounded-lg shadow-lg border border-border-light z-50">
-                <button onClick={() => { navigate("/orders"); setIsProfileOpen(false); }} className="w-full px-4 py-2 hover:bg-background-light text-left">My Orders</button>
-                <button onClick={() => { navigate("/profile"); setIsProfileOpen(false); }} className="w-full px-4 py-2 hover:bg-background-light text-left">My Profile</button>
+                <button onClick={() => { navigate("/orders"); setIsProfileOpen(false); }} className="w-full px-4 py-2 text-black hover:bg-background-light text-left">My Orders</button>
+                <button onClick={() => { navigate("/profile"); setIsProfileOpen(false); }} className="w-full px-4 py-2 text-black hover:bg-background-light text-left">My Profile</button>
                 <button onClick={handleLogout} className="w-full px-4 py-2 hover:bg-background-light text-left text-red-600">Logout</button>
               </div>
             )}
           </div>
 
           {!user && (
-            <button onClick={() => navigate("/login")} className="bg-primary text-surface-light px-6 py-2 rounded-lg font-semibold hover:bg-primary-hover transition">
+            <button onClick={() => navigate("/login")} className="bg-primary text-surface-light border border-amber-50  px-6 py-2 rounded-lg font-semibold hover:bg-primary-hover transition ">
               Login
             </button>
           )}

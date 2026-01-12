@@ -30,10 +30,10 @@ const HeroSection = () => {
 
         <Link
           to="/products"
-          className="inline-flex items-center gap-3 bg-gold text-black px-8 py-3 rounded-full font-semibold hover:bg-yellow-500 transition shadow-lg"
+          className="inline-flex items-center gap-3 bg-background-light text-black px-8 py-3 rounded-full font-semibold hover:bg-accent-hover transition shadow-lg"
         >
           Shop the Collection
-          <span className="bg-black text-gold rounded-full px-2 py-1 flex items-center justify-center">
+          <span className="bg-black text-white rounded-full px-2 py-1 flex items-center justify-center">
             ➜
           </span>
         </Link>
