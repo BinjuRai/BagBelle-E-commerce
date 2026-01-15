@@ -36,6 +36,8 @@ import Contact from "../pages/contact.jsx";
 import Homepage from "../pages/Homepage.jsx";
 import AboutUs from "../pages/aboutus.jsx";
 import AllProductsPage from "../pages/allProduct.jsx";
+import MyOrders from "../pages/MyOrder.jsx";
+import Faq from "../pages/Faq.jsx";
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -45,6 +47,7 @@ export default function AppRouter() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/aboutus" element={<AboutUs />} />
           <Route path="/products" element={<AllProductsPage />} />
+          <Route path="/faq" element={<Faq />} />
           
          
         </Route>
@@ -65,6 +68,7 @@ export default function AppRouter() {
              <Route path="/wishlist" element={<WishlistPage />} />
              <Route path="/cart" element={<CartPage />} />
              <Route path="/profile" element={<ProfilePage />} />
+             <Route path="/orders" element={<MyOrders />} />
           </Route>
         </Route>
 

@@ -26,7 +26,7 @@ const CategorySection = ({ categories }) => {
 
           {categories.length > 4 && (
             <button
-              onClick={() => navigate("/shop")}
+              onClick={() => navigate("/products")}
             className="inline-flex items-center gap-4 bg-background-light text-black font-semibold px-8 py-3 rounded-full  hover:bg-accent-hover transition shadow-lg"
             >
               View All
@@ -37,16 +37,7 @@ const CategorySection = ({ categories }) => {
           )}
         </div>
 
-        {/* Category Cards */}
-        {/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {filteredCategories.map(category => (
-            <CategoryCard
-              key={category._id}
-              category={category}
-              onClick={() => navigate(`/shop?category=${category._id}`)}
-            />
-          ))}
-        </div> */}
+      
          <div className="overflow-x-auto flex gap-6 py-8">
           {filteredCategories.map((category) => (
             <div key={category._id} className="flex-shrink-0 w-72">
