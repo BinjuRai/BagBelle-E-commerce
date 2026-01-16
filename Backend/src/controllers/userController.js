@@ -244,11 +244,11 @@
 //     res.status(500).json({ success: false, message: "Server error" });
 //   }
 // };
-
 const nodemailer = require("nodemailer");
 const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const axios = require("axios");
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -262,27 +262,22 @@ const transporter = nodemailer.createTransport({
 const validatePasswordStrength = (password) => {
   const errors = [];
   
-  // Length check (minimum 8 characters)
   if (password.length < 8) {
     errors.push("Password must be at least 8 characters long");
   }
   
-  // Uppercase check
   if (!/[A-Z]/.test(password)) {
     errors.push("Password must contain at least one uppercase letter");
   }
   
-  // Lowercase check
   if (!/[a-z]/.test(password)) {
     errors.push("Password must contain at least one lowercase letter");
   }
   
-  // Number check
   if (!/[0-9]/.test(password)) {
     errors.push("Password must contain at least one number");
   }
   
-  // Special character check
   if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
     errors.push("Password must contain at least one special character");
   }
@@ -296,18 +291,40 @@ const validatePasswordStrength = (password) => {
 // 🔒 CHECK PASSWORD REUSE HELPER
 const checkPasswordReuse = async (password, passwordHistory) => {
   if (!passwordHistory || passwordHistory.length === 0) {
-    return false; // No history, password is new
+    return false;
   }
   
-  // Check against last 5 passwords
   for (const oldPassword of passwordHistory) {
     const isSame = await bcrypt.compare(password, oldPassword.hash);
     if (isSame) {
-      return true; // Password was used before
+      return true;
     }
   }
   
-  return false; // Password is new
+  return false;
+};
+
+// 🔒 VERIFY RECAPTCHA TOKEN
+const verifyRecaptcha = async (token) => {
+  if (!token) return false;
+  
+  try {
+    const response = await axios.post(
+      `https://www.google.com/recaptcha/api/siteverify`,
+      null,
+      {
+        params: {
+          secret: process.env.RECAPTCHA_SECRET_KEY,
+          response: token
+        }
+      }
+    );
+    
+    return response.data.success && response.data.score >= 0.5;
+  } catch (error) {
+    console.error("reCAPTCHA verification error:", error);
+    return false;
+  }
 };
 
 exports.registerUser = async (req, res) => {
@@ -343,7 +360,6 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    // 🔒 HASH PASSWORD WITH SALT ROUNDS = 12 (industry standard)
     const hashedPass = await bcrypt.hash(password, 12);
 
     const newUser = new User({
@@ -352,8 +368,10 @@ exports.registerUser = async (req, res) => {
       password: hashedPass,
       phone,
       passwordChangedAt: new Date(),
-      passwordExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
-      passwordHistory: [{ hash: hashedPass, changedAt: new Date() }]
+      passwordExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+      passwordHistory: [{ hash: hashedPass, changedAt: new Date() }],
+      loginAttempts: 0,
+      requiresCaptcha: false
     });
 
     await newUser.save();
@@ -372,7 +390,7 @@ exports.registerUser = async (req, res) => {
 };
 
 exports.loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, recaptchaToken } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({
@@ -391,6 +409,63 @@ exports.loginUser = async (req, res) => {
       });
     }
 
+    // 🔒 CHECK IF ACCOUNT IS LOCKED
+    if (getUser.isLocked) {
+      const minutesLeft = Math.ceil((getUser.lockUntil - Date.now()) / (1000 * 60));
+      return res.status(403).json({
+        success: false,
+        message: `Account is locked due to too many failed login attempts. Try again in ${minutesLeft} minutes.`,
+        accountLocked: true,
+        lockUntil: getUser.lockUntil,
+        minutesRemaining: minutesLeft
+      });
+    }
+
+    // 🔒 CHECK IF CAPTCHA IS REQUIRED
+    if (getUser.requiresCaptcha) {
+      if (!recaptchaToken) {
+        return res.status(403).json({
+          success: false,
+          message: "CAPTCHA verification required",
+          requiresCaptcha: true,
+          loginAttempts: getUser.loginAttempts
+        });
+      }
+
+      const isCaptchaValid = await verifyRecaptcha(recaptchaToken);
+      if (!isCaptchaValid) {
+        return res.status(403).json({
+          success: false,
+          message: "CAPTCHA verification failed. Please try again.",
+          requiresCaptcha: true
+        });
+      }
+    }
+
+    // 🔒 VERIFY PASSWORD
+    const passwordCheck = await bcrypt.compare(password, getUser.password);
+    
+    if (!passwordCheck) {
+      // Increment failed attempts
+      await getUser.incLoginAttempts();
+      
+      const updatedUser = await User.findById(getUser._id);
+      const attemptsLeft = 5 - updatedUser.loginAttempts;
+      
+      let message = "Invalid credentials";
+      if (updatedUser.loginAttempts >= 3) {
+        message = `Invalid credentials. ${attemptsLeft} attempts remaining before account lockout.`;
+      }
+      
+      return res.status(403).json({
+        success: false,
+        message,
+        loginAttempts: updatedUser.loginAttempts,
+        requiresCaptcha: updatedUser.requiresCaptcha,
+        attemptsRemaining: Math.max(0, attemptsLeft)
+      });
+    }
+
     // 🔒 CHECK PASSWORD EXPIRY
     const isExpired = getUser.checkPasswordExpiry();
     if (isExpired) {
@@ -401,13 +476,8 @@ exports.loginUser = async (req, res) => {
       });
     }
 
-    const passwordCheck = await bcrypt.compare(password, getUser.password);
-    if (!passwordCheck) {
-      return res.status(403).json({
-        success: false,
-        message: "Invalid credentials",
-      });
-    }
+    // ✅ SUCCESSFUL LOGIN - Reset attempts
+    await getUser.resetLoginAttempts();
 
     const payload = {
       _id: getUser._id,
@@ -418,7 +488,6 @@ exports.loginUser = async (req, res) => {
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    // Calculate days until password expires
     const daysUntilExpiry = Math.ceil(
       (getUser.passwordExpiresAt - new Date()) / (1000 * 60 * 60 * 24)
     );
@@ -487,7 +556,6 @@ exports.resetPassword = async (req, res) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // 🔒 VALIDATE PASSWORD STRENGTH
     const validation = validatePasswordStrength(password);
     if (!validation.isValid) {
       return res.status(400).json({
@@ -505,7 +573,6 @@ exports.resetPassword = async (req, res) => {
       });
     }
 
-    // 🔒 CHECK PASSWORD REUSE
     const isReused = await checkPasswordReuse(password, user.passwordHistory);
     if (isReused) {
       return res.status(400).json({
@@ -516,9 +583,11 @@ exports.resetPassword = async (req, res) => {
 
     const hashed = await bcrypt.hash(password, 12);
     
-    // Add to password history
     user.addToPasswordHistory(hashed);
     user.password = hashed;
+    
+    // Reset login attempts on password reset
+    await user.resetLoginAttempts();
     
     await user.save();
 
@@ -541,7 +610,6 @@ exports.getProfile = async (req, res) => {
     if (!user)
       return res.status(404).json({ success: false, message: "User not found" });
 
-    // Check password expiry
     const isExpired = user.checkPasswordExpiry();
     const daysUntilExpiry = Math.ceil(
       (user.passwordExpiresAt - new Date()) / (1000 * 60 * 60 * 24)
@@ -589,7 +657,6 @@ exports.changePassword = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
 
-    // 🔒 VERIFY OLD PASSWORD
     const isMatch = await bcrypt.compare(oldPassword, user.password);
     if (!isMatch) {
       return res.status(400).json({ 
@@ -598,7 +665,6 @@ exports.changePassword = async (req, res) => {
       });
     }
 
-    // 🔒 VALIDATE NEW PASSWORD STRENGTH
     const validation = validatePasswordStrength(newPassword);
     if (!validation.isValid) {
       return res.status(400).json({
@@ -608,7 +674,6 @@ exports.changePassword = async (req, res) => {
       });
     }
 
-    // 🔒 CHECK PASSWORD REUSE
     const isReused = await checkPasswordReuse(newPassword, user.passwordHistory);
     if (isReused) {
       return res.status(400).json({
@@ -617,7 +682,6 @@ exports.changePassword = async (req, res) => {
       });
     }
 
-    // Hash and save new password
     const hashedPassword = await bcrypt.hash(newPassword, 12);
     user.addToPasswordHistory(hashedPassword);
     user.password = hashedPassword;

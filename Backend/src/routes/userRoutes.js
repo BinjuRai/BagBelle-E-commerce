@@ -8,7 +8,6 @@
 
 // module.exports = router;
 
-
 const express = require("express");
 const {
   registerUser,
@@ -20,13 +19,18 @@ const {
   changePassword,
 } = require("../controllers/userController");
 const { authenticate } = require("../middlewares/authMiddleware");
+const { 
+  loginLimiter, 
+  registerLimiter, 
+  passwordResetLimiter 
+} = require("../middlewares/rateLimiter");
 
 const router = express.Router();
 
-// 🔓 Public routes (no authentication required)
-router.post("/register", registerUser);
-router.post("/login", loginUser);
-router.post("/forgot-password", sendResetLink);
+// 🔓 Public routes with rate limiting
+router.post("/register", registerLimiter, registerUser);
+router.post("/login", loginLimiter, loginUser);
+router.post("/forgot-password", passwordResetLimiter, sendResetLink);
 router.post("/reset-password/:token", resetPassword);
 
 // 🔒 Protected routes (authentication required)
