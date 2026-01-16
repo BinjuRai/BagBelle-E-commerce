@@ -296,6 +296,19 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
+// 🔒 HTTPS ENFORCEMENT (Production only)
+if (process.env.NODE_ENV === "production") {
+  app.use((req, res, next) => {
+    // Check if request is already HTTPS
+    if (req.headers["x-forwarded-proto"] !== "https") {
+      return res.redirect(301, `https://${req.headers.host}${req.url}`);
+    }
+    next();
+  });
+  
+  console.log("🔒 HTTPS enforcement enabled");
+}
+
 // ❌ 404 HANDLER
 app.use((req, res) => {
   res.status(404).json({
