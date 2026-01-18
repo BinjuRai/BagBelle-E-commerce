@@ -173,8 +173,20 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const csrf = require("csurf");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per 15 minutes per IP
+  message: {
+    success: false,
+    message: "Too many login attempts. Please try again after 15 minutes."
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // 🔧 MIDDLEWARE SETUP (Order matters!)
 app.use(express.json());
@@ -210,6 +222,7 @@ app.use(
 //   });
 // });
 
+// 🛡️ CSRF PROTECTION (cookie-based)
 const csrfProtection = csrf({
   cookie: {
     httpOnly: true,
@@ -217,6 +230,8 @@ const csrfProtection = csrf({
     sameSite: "strict",
   },
 });
+
+// 🛡️ CSRF Token Endpoint (GET request - no CSRF needed)
 app.get("/api/csrf-token", csrfProtection, (req, res) => {
   res.json({
     success: true,
@@ -242,7 +257,7 @@ app.use("/api/admin/products", csrfProtection, adminProductRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/admin/categories", csrfProtection, adminCategoryRoutes);
 app.use("/api/wishlist", wishlistRoutes);
-
+app.use("/api/auth/login", loginLimiter);
 
 // 🏠 TEST ROUTE
 app.get("/", (req, res) => {

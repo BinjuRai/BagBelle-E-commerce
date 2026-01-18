@@ -207,6 +207,7 @@ import { registerUserApi, loginUserApi } from "../services/userService";
 import { useAuth } from "../auth/authProvider";
 import { toast } from "react-toastify";
 
+
 // 🔒 PASSWORD STRENGTH CHECKER
 const calculatePasswordStrength = (password) => {
   let score = 0;
@@ -343,6 +344,7 @@ const Register = () => {
 
     registerMutation.mutate(formData);
   };
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background-light to-surface-light relative overflow-hidden">

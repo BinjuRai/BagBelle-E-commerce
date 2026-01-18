@@ -111,7 +111,7 @@
 //     ],
 //     role: { type: String, enum: ["user", "admin"], default: "user" },
 //     filepath: { type: String },
-    
+
 //     // 🔐 PASSWORD SECURITY FEATURES
 //     passwordHistory: [
 //       {
@@ -155,7 +155,7 @@
 
 //   // Lock account after 5 failed attempts for 30 minutes
 //   if (this.loginAttempts + 1 >= 5) {
-//     updates.$set = { 
+//     updates.$set = {
 //       lockUntil: Date.now() + 30 * 60 * 1000, // 30 minutes
 //       requiresCaptcha: true
 //     };
@@ -178,7 +178,7 @@
 //     this.passwordExpiresAt = new Date(this.passwordChangedAt);
 //     this.passwordExpiresAt.setDate(this.passwordExpiresAt.getDate() + 90);
 //   }
-  
+
 //   const now = new Date();
 //   this.isPasswordExpired = now > this.passwordExpiresAt;
 //   return this.isPasswordExpired;
@@ -190,11 +190,11 @@
 //     hash: passwordHash,
 //     changedAt: new Date()
 //   });
-  
+
 //   if (this.passwordHistory.length > 5) {
 //     this.passwordHistory = this.passwordHistory.slice(0, 5);
 //   }
-  
+
 //   this.passwordChangedAt = new Date();
 //   this.passwordExpiresAt = new Date();
 //   this.passwordExpiresAt.setDate(this.passwordExpiresAt.getDate() + 90);
@@ -222,7 +222,7 @@
 //     ],
 //     role: { type: String, enum: ["user", "admin"], default: "user" },
 //     filepath: { type: String },
-    
+
 //     // 🔐 PASSWORD SECURITY FEATURES
 //     passwordHistory: [
 //       {
@@ -274,7 +274,7 @@
 //   }
 
 //   if (this.loginAttempts + 1 >= 5) {
-//     updates.$set = { 
+//     updates.$set = {
 //       lockUntil: Date.now() + 30 * 60 * 1000,
 //       requiresCaptcha: true
 //     };
@@ -297,7 +297,7 @@
 //     this.passwordExpiresAt = new Date(this.passwordChangedAt);
 //     this.passwordExpiresAt.setDate(this.passwordExpiresAt.getDate() + 90);
 //   }
-  
+
 //   const now = new Date();
 //   this.isPasswordExpired = now > this.passwordExpiresAt;
 //   return this.isPasswordExpired;
@@ -309,11 +309,11 @@
 //     hash: passwordHash,
 //     changedAt: new Date()
 //   });
-  
+
 //   if (this.passwordHistory.length > 5) {
 //     this.passwordHistory = this.passwordHistory.slice(0, 5);
 //   }
-  
+
 //   this.passwordChangedAt = new Date();
 //   this.passwordExpiresAt = new Date();
 //   this.passwordExpiresAt.setDate(this.passwordExpiresAt.getDate() + 90);
@@ -371,17 +371,17 @@ const userSchema = new mongoose.Schema(
         district: String,
         ward: String,
         phone: String, // ✅ Will be auto-encrypted
-      }
+      },
     ],
     role: { type: String, enum: ["user", "admin"], default: "user" },
     filepath: { type: String },
-    
+
     // 🔐 PASSWORD SECURITY FEATURES
     passwordHistory: [
       {
         hash: String,
-        changedAt: { type: Date, default: Date.now }
-      }
+        changedAt: { type: Date, default: Date.now },
+      },
     ],
     passwordChangedAt: { type: Date, default: Date.now },
     passwordExpiresAt: { type: Date },
@@ -399,44 +399,69 @@ const userSchema = new mongoose.Schema(
         createdAt: { type: Date, default: Date.now },
         expiresAt: Date,
         userAgent: String,
-        ip: String
-      }
-    ]
+        ip: String,
+      },
+    ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // 🔐 AUTO-ENCRYPT PHONE BEFORE SAVING
-userSchema.pre("save", function(next) {
+// userSchema.pre("save", function(next) {
+//   try {
+//     // Encrypt main phone number if modified and not already encrypted
+//     if (this.isModified("phone") && this.phone) {
+//       // Check if already encrypted (encrypted data is longer and contains special chars)
+//       if (!this.phone.includes("U2FsdGVk")) { // Base64 marker from CryptoJS
+//         this.phone = encrypt(this.phone);
+//       }
+//     }
+
+//     // Encrypt phone numbers in addresses
+//     if (this.isModified("address") && this.address) {
+//       this.address = this.address.map(addr => {
+//         if (addr.phone && !addr.phone.includes("U2FsdGVk")) {
+//           return { ...addr, phone: encrypt(addr.phone) };
+//         }
+//         return addr;
+//       });
+//     }
+
+//     next();
+//   } catch (error) {
+//     next(error);
+//   }
+// });
+// 🔐 AUTO-ENCRYPT PHONE BEFORE SAVING
+userSchema.pre("save", async function () {
   try {
     // Encrypt main phone number if modified and not already encrypted
     if (this.isModified("phone") && this.phone) {
       // Check if already encrypted (encrypted data is longer and contains special chars)
-      if (!this.phone.includes("U2FsdGVk")) { // Base64 marker from CryptoJS
+      if (!this.phone.includes("U2FsdGVk")) {
+        // Base64 marker from CryptoJS
         this.phone = encrypt(this.phone);
       }
     }
 
     // Encrypt phone numbers in addresses
     if (this.isModified("address") && this.address) {
-      this.address = this.address.map(addr => {
+      this.address = this.address.map((addr) => {
         if (addr.phone && !addr.phone.includes("U2FsdGVk")) {
           return { ...addr, phone: encrypt(addr.phone) };
         }
         return addr;
       });
     }
-
-    next();
   } catch (error) {
-    next(error);
+    throw error; // Let Mongoose handle the error
   }
 });
 
 // 🔐 AUTO-DECRYPT PHONE WHEN CONVERTING TO JSON
-userSchema.methods.toJSON = function() {
+userSchema.methods.toJSON = function () {
   const user = this.toObject();
-  
+
   // Decrypt main phone
   if (user.phone) {
     user.phone = decrypt(user.phone);
@@ -444,9 +469,9 @@ userSchema.methods.toJSON = function() {
 
   // Decrypt address phones
   if (user.address) {
-    user.address = user.address.map(addr => ({
+    user.address = user.address.map((addr) => ({
       ...addr,
-      phone: addr.phone ? decrypt(addr.phone) : null
+      phone: addr.phone ? decrypt(addr.phone) : null,
     }));
   }
 
@@ -459,16 +484,16 @@ userSchema.methods.toJSON = function() {
 };
 
 // 🔒 Virtual field to check if account is locked
-userSchema.virtual('isLocked').get(function() {
+userSchema.virtual("isLocked").get(function () {
   return !!(this.lockUntil && this.lockUntil > Date.now());
 });
 
 // 🔒 Method to increment failed login attempts
-userSchema.methods.incLoginAttempts = function() {
+userSchema.methods.incLoginAttempts = function () {
   if (this.lockUntil && this.lockUntil < Date.now()) {
     return this.updateOne({
       $set: { loginAttempts: 1 },
-      $unset: { lockUntil: 1 }
+      $unset: { lockUntil: 1 },
     });
   }
 
@@ -479,9 +504,9 @@ userSchema.methods.incLoginAttempts = function() {
   }
 
   if (this.loginAttempts + 1 >= 5) {
-    updates.$set = { 
+    updates.$set = {
       lockUntil: Date.now() + 30 * 60 * 1000,
-      requiresCaptcha: true
+      requiresCaptcha: true,
     };
   }
 
@@ -489,36 +514,36 @@ userSchema.methods.incLoginAttempts = function() {
 };
 
 // 🔒 Method to reset login attempts on successful login
-userSchema.methods.resetLoginAttempts = function() {
+userSchema.methods.resetLoginAttempts = function () {
   return this.updateOne({
     $set: { loginAttempts: 0, requiresCaptcha: false },
-    $unset: { lockUntil: 1 }
+    $unset: { lockUntil: 1 },
   });
 };
 
 // 🔒 Method to check password expiry (90 days)
-userSchema.methods.checkPasswordExpiry = function() {
+userSchema.methods.checkPasswordExpiry = function () {
   if (!this.passwordExpiresAt) {
     this.passwordExpiresAt = new Date(this.passwordChangedAt);
     this.passwordExpiresAt.setDate(this.passwordExpiresAt.getDate() + 90);
   }
-  
+
   const now = new Date();
   this.isPasswordExpired = now > this.passwordExpiresAt;
   return this.isPasswordExpired;
 };
 
 // 🔒 Method to add password to history (keep last 5)
-userSchema.methods.addToPasswordHistory = function(passwordHash) {
+userSchema.methods.addToPasswordHistory = function (passwordHash) {
   this.passwordHistory.unshift({
     hash: passwordHash,
-    changedAt: new Date()
+    changedAt: new Date(),
   });
-  
+
   if (this.passwordHistory.length > 5) {
     this.passwordHistory = this.passwordHistory.slice(0, 5);
   }
-  
+
   this.passwordChangedAt = new Date();
   this.passwordExpiresAt = new Date();
   this.passwordExpiresAt.setDate(this.passwordExpiresAt.getDate() + 90);
@@ -526,7 +551,7 @@ userSchema.methods.addToPasswordHistory = function(passwordHash) {
 };
 
 // 🔑 Add refresh token to user
-userSchema.methods.addRefreshToken = function(token, userAgent, ip) {
+userSchema.methods.addRefreshToken = function (token, userAgent, ip) {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -534,7 +559,7 @@ userSchema.methods.addRefreshToken = function(token, userAgent, ip) {
     token,
     expiresAt,
     userAgent,
-    ip
+    ip,
   });
 
   if (this.refreshTokens.length > 5) {
@@ -543,19 +568,19 @@ userSchema.methods.addRefreshToken = function(token, userAgent, ip) {
 };
 
 // 🔑 Remove specific refresh token (logout)
-userSchema.methods.removeRefreshToken = function(token) {
-  this.refreshTokens = this.refreshTokens.filter(rt => rt.token !== token);
+userSchema.methods.removeRefreshToken = function (token) {
+  this.refreshTokens = this.refreshTokens.filter((rt) => rt.token !== token);
 };
 
 // 🔑 Remove all refresh tokens (logout all devices)
-userSchema.methods.removeAllRefreshTokens = function() {
+userSchema.methods.removeAllRefreshTokens = function () {
   this.refreshTokens = [];
 };
 
 // 🔑 Clean expired refresh tokens
-userSchema.methods.cleanExpiredTokens = function() {
+userSchema.methods.cleanExpiredTokens = function () {
   const now = new Date();
-  this.refreshTokens = this.refreshTokens.filter(rt => rt.expiresAt > now);
+  this.refreshTokens = this.refreshTokens.filter((rt) => rt.expiresAt > now);
 };
 
 module.exports = mongoose.model("User", userSchema);
