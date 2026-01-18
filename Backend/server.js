@@ -80,6 +80,13 @@ const adminProductRoutes = require("./src/routes/admin/adminProductRoutes");
 const categoryRoutes = require("./src/routes/categoryRoutes")
 const adminCategoryRoutes = require("./src/routes/admin/adminCategoryRoutes")
 const wishlistRoutes = require("./src/routes/wishlistRoutes");
+const cartRoute = require("./src/routes/cartRoute");
+const notificationRoutes = require("./src/routes/notificationRoutes");
+const blogRoutes = require("./src/routes/blogRoutes");
+const deliveryTrackingRoutes = require("./src/routes/deliveryTrackingRoutes");
+const profileRoutes = require("./src/routes/profileRoutes");
+
+const reviewRoutes = require("./src/routes/reviewRoutes");
 
 // 🔗 USE ROUTES
 // Note: Using /api/auth to match your existing structure
@@ -91,6 +98,18 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/admin/categories", csrfProtection, adminCategoryRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/auth/login", loginLimiter);
+app.use("/api/cart", cartRoute);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/auth/users", profileRoutes)
+app.use("/api", blogRoutes);
+app.use("/api/delivery-tracking", deliveryTrackingRoutes);
+app.use("/api/reviews", reviewRoutes);
+
+app.use((req, res, next) => {
+  console.log("🍪 Cookies:", req.cookies);
+  next();
+});
+
 
 // 🏠 TEST ROUTE
 app.get("/", (req, res) => {

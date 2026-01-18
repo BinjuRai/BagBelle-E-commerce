@@ -1,6 +1,11 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "../auth/authProvider";
-import { getCart, addToCart as addToCartAPI, updateCartQuantity, removeFromCart as removeFromCartAPI } from "../services/cartService";
+import {
+  getCart,
+  addToCart as addToCartAPI,
+  updateCartQuantity,
+  removeFromCart as removeFromCartAPI,
+} from "../services/cartService";
 import { toast } from "react-toastify";
 
 const CartContext = createContext();
@@ -39,11 +44,23 @@ export const CartProvider = ({ children }) => {
     }
   }, [cart]);
 
+  // const fetchCart = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const data = await getCart();
+  //     setCart(data.cart);
+  //   } catch (err) {
+  //     console.error("Failed to fetch cart:", err);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const fetchCart = async () => {
     try {
       setLoading(true);
       const data = await getCart();
       setCart(data.cart);
+      return data.cart;
     } catch (err) {
       console.error("Failed to fetch cart:", err);
     } finally {
@@ -99,13 +116,13 @@ export const CartProvider = ({ children }) => {
     }, 0);
   };
   const loadCart = async () => {
-  try {
-    const data = await fetchCart();
-    setCart(data);
-  } catch (err) {
-    console.error("Failed to fetch cart:", err);
-  }
-};
+    try {
+      const data = await fetchCart();
+      setCart(data);
+    } catch (err) {
+      console.error("Failed to fetch cart:", err);
+    }
+  };
 
   const value = {
     cart,
@@ -121,4 +138,3 @@ export const CartProvider = ({ children }) => {
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
-

@@ -6,7 +6,7 @@ import MainLayout from "../layouts/MainLayout.jsx";
 // Pages
 
 import LoginPage from "../pages/login.jsx";
-import RegisterPage from "../pages/register.jsx";
+import RegisterPage from "../pages/Register.jsx";
 
 // Route Guards
 import GuestRoute from "./GuestRouter.jsx";
@@ -38,6 +38,7 @@ import AboutUs from "../pages/aboutus.jsx";
 import AllProductsPage from "../pages/allProduct.jsx";
 import MyOrders from "../pages/MyOrder.jsx";
 import Faq from "../pages/Faq.jsx";
+import ProductDetailsPage from "../pages/productDetails.jsx";
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -48,6 +49,8 @@ export default function AppRouter() {
           <Route path="/aboutus" element={<AboutUs />} />
           <Route path="/products" element={<AllProductsPage />} />
           <Route path="/faq" element={<Faq />} />
+          <Route path="/products/:id" element={<ProductDetailsPage />} />
+        
           
          
         </Route>
